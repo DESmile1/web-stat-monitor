@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  checker:
+    build: .
+    container_name: my_web_monitor
+    environment:
+      - SITES_TO_CHECK=https://google.com,https://github.com,https://op.edu.ua
+      - PYTHONUNBUFFERED=1
+    restart: always
