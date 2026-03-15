@@ -7,4 +7,6 @@ services:
     environment:
       - SITES_TO_CHECK=https://google.com,https://github.com,https://op.edu.ua
       - PYTHONUNBUFFERED=1
+    volumes:
+      - ./logs:/app/reports
     restart: always

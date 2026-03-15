@@ -12,6 +12,11 @@ STATUS_MESSAGES = {
     503: "Service temporarily unavailable."
 }
 
+def log_to_file(message):
+    # Open the file in ‘a’ mode (append—add to the end)
+    # The file will be located in the /app/reports/ folder
+    with open("reports/monitoring_log.txt", "a", encoding="utf-8") as f:
+        f.write(f"{time.ctime()} | {message}\n")
 def check_sites():
     print(f"---Starting check at {time.ctime()}---")
     
@@ -30,6 +35,9 @@ def check_sites():
             print(f"[{site}] - ERROR: Unable to connect to the site. ({e})")
 
 if __name__ == "__main__": # Monitoring will continue while the script is running
+   
+    if not os.path.exists("reports"): # Create a folder for logs if it doesn't exist
+        os.makedirs("reports")
     while True:
         check_sites()
         time.sleep(60)
