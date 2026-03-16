@@ -1,8 +1,11 @@
 import requests
 import time
 import os
+import psycopg2
 
 SITES = os.getenv('SITES_TO_CHECK', "https://google.com,https://github.com").split(",")
+# Connection settings
+DB_CONFIG =  "host=db dbname=monitoring user=admin password=qwerty123"
 
 STATUS_MESSAGES = {
     200: "The site is working great!",
@@ -12,32 +15,33 @@ STATUS_MESSAGES = {
     503: "Service temporarily unavailable."
 }
 
-def log_to_file(message):
-    # Open the file in ‘a’ mode (append—add to the end)
-    # The file will be located in the /app/reports/ folder
-    with open("reports/monitoring_log.txt", "a", encoding="utf-8") as f:
-        f.write(f"{time.ctime()} | {message}\n")
-def check_sites():
-    print(f"---Starting check at {time.ctime()}---")
+def log_to_file(text): # Writing file to a computer
+    if not os.path.exists("reports"): os.makedir("reports")
+    with open("reports/monitoring_log.txt","a") as f:
+        f.write(f"{time.ctime()} | {text}\n")
     
-    for site in SITES:
-        site = site.strip()
+def log_to_db(site, code, msg):
         try:
-            # We visit the website and wait for a maximum of 5 seconds
-            response = requests.get(site, timeout=5)
-            # Take a code
-            code = response.status_code
-            # Output of pre-compiled code or uncompiled code
-            message = STATUS_MESSAGES.get(code, f"An unusual response was received (Code: {code})")
-            print(f"[{site}] - {message}")
+             with psycopg2.connect(DB_CONFIG) as conn:
+                  with conn.cursor() as cur:
+                       cur.execute("INSERT INTO site_url (site_url, status_code, message) VALUES (%s, %s, %s)", (site, code, msg))
 
-        except Exception as e:
-            print(f"[{site}] - ERROR: Unable to connect to the site. ({e})")
+        except:
+             print("The DataBase is currentsy unavailable")
 
 if __name__ == "__main__": # Monitoring will continue while the script is running
-   
-    if not os.path.exists("reports"): # Create a folder for logs if it doesn't exist
-        os.makedirs("reports")
-    while True:
-        check_sites()
+   time.sleep(10) # Waiting for the DB to start
+   while True:
+        for site in SITES:
+            site = site.strip()
+            try:
+                 r = requests.get(site, timeout=5)
+                 msg = STATUS_MESSAGES.get(r.status_code, f"Code {r.status_code}")
+            except:
+                 r, msg = type('obj', (object,), {'status_code':0}), "Offline"
+
+            log_to_file(f"{site} -> {msg}")
+            log_to_db(site, r.status_code, msg)
+            print(f"Checked {site}: {msg}")
+
         time.sleep(60)
