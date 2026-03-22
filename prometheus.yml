@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'python_checker'
+    static_configs:
+      - targets: ['checker:8000'] # checker - docker-compose service name

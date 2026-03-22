@@ -2,6 +2,12 @@ import requests
 import time
 import os
 import psycopg2
+from prometheus_client import start_http_server, Counter, Gauge
+import time
+
+# Create metrics
+REQUEST_COUNT = Counter('site_requests_total', 'Total status checks', ['site', 'status'])
+RESPONSE_TIME = Gauge('site_response_time_seconds', 'Response time in seconds', ['site'])
 
 SITES = os.getenv('SITES_TO_CHECK', "https://google.com,https://github.com").split(",")
 # Connection settings
@@ -52,17 +58,30 @@ if __name__ == "__main__": # Monitoring will continue while the script is runnin
     
     init_db() # Сreating the table before the loop
     
+    # Start the metrics server on port 8000
+    # Prometheus will access this at: http://checker:8000/metrics
+    start_http_server(8000)
+    print("Prometheus metrics server started on port 8000")
+
     while True:
         for site in SITES:
             site = site.strip()
+            start_time = time.time() # We record the start time of the request
+            
             try:
                 r = requests.get(site, timeout=5)
-                msg = STATUS_MESSAGES.get(r.status_code, f"Code {r.status_code}")
-            except:
-                r, msg = type('obj', (object,), {'status_code':0}), "Offline"
+                status_code = r.status_code
+                msg = STATUS_MESSAGES.get(status_code, f"Code {status_code}")
+            except Exception:
+                status_code = 0
+                msg = "Offline"
+
+            # We update the metrics after every transaction
+            REQUEST_COUNT.labels(site=site, status=status_code).inc()
+            RESPONSE_TIME.labels(site=site).set(time.time() - start_time)
 
             log_to_file(f"{site} -> {msg}")
-            log_to_db(site, r.status_code, msg)
+            log_to_db(site, status_code, msg)
             print(f"Checked {site}: {msg}")
 
-        time.sleep(60) 
+        time.sleep(60)

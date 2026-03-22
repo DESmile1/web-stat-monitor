@@ -1,8 +1,10 @@
 FROM python:3.11-slim
 
 WORKDIR /app
-# PosgreSQL lib
-RUN pip install requests psycopg2-binary
+# First, copy only the list of dependencies (to cache Docker layers)
+COPY requirements.txt .
+# Requests, psycopg2-binary and prometheus_client
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY monitor.py .
 
